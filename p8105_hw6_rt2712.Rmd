@@ -1,0 +1,42 @@
+---
+title: "Homework 6"
+author: "Rachel Tsong"
+date: "27 November 2018"
+output: github_document
+---
+
+```{r}
+library(tidyverse)
+```
+
+
+# Problem 1
+```{r }
+## Import and clean data by creating binary variables for unsolved dispositions and race, filter out irrelevant cities
+homicide = read_csv(url("https://raw.githubusercontent.com/washingtonpost/data-homicides/master/homicide-data.csv")) 
+
+homicide = homicide %>%
+  mutate(city_state = str_c(city, state, sep = ", "),
+         unsolved = ifelse(disposition != "Closed by arrest", TRUE, FALSE),
+         victim_age = as.numeric(victim_age),
+         victim_race = ifelse(victim_race == "White", c("white"), c("non-white")),
+         victim_race = fct_relevel(victim_race, "white")) %>%
+  filter(city_state != "Dallas, TX" & 
+         city_state != "Phoenix, AZ" & 
+         city_state != "Kansas City, MO" & 
+         city_state != "Tulsa, AL")
+```
+
+In the code chunk above, I imported and cleaned the data. At first I was worried about the warning message when I recoded `victim_age` as a factor variable, but upon looking at the original data set there were instances in which the victim's age was unknown. These were changed to NAs when recoded to numeric, so I didn't see this as a problem.
+
+
+
+
+
+
+
+
+
+
+
+
