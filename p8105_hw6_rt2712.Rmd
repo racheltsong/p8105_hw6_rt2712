@@ -17,10 +17,10 @@ homicide = read_csv(url("https://raw.githubusercontent.com/washingtonpost/data-h
 
 homicide = homicide %>%
   mutate(city_state = str_c(city, state, sep = ", "),
-         unsolved = ifelse(disposition != "Closed by arrest", TRUE, FALSE),
+         resolved = as.numeric(disposition == "Closed by arrest"),
          victim_age = as.numeric(victim_age),
-         victim_race = ifelse(victim_race == "White", c("white"), c("non-white")),
-         victim_race = fct_relevel(victim_race, "white")) %>%
+         victim_race = ifelse(victim_race == "White", c("White"), c("Non-white")),
+         victim_race = fct_relevel(victim_race, "White")) %>%
   filter(city_state != "Dallas, TX" & 
          city_state != "Phoenix, AZ" & 
          city_state != "Kansas City, MO" & 
@@ -29,10 +29,62 @@ homicide = homicide %>%
 
 In the code chunk above, I imported and cleaned the data. At first I was worried about the warning message when I recoded `victim_age` as a factor variable, but upon looking at the original data set there were instances in which the victim's age was unknown. These were changed to NAs when recoded to numeric, so I didn't see this as a problem.
 
+```{r}
+## Fit logistic regression using age, race, and sex as predictors for resolved
+baltimore_logistic = 
+  homicide %>% 
+  filter(city_state== "Baltimore, MD") %>%
+  glm(resolved ~ victim_age + victim_race + victim_sex, data = ., family = binomial()) 
+
+## Make a table showing the odds ratio and 95% CI 
+baltimore_logistic %>%  
+  broom::tidy() %>% 
+  mutate(OR = exp(estimate),
+         OR_upper_bound = exp(estimate + 1.96*std.error),
+         OR_lower_bound = exp(estimate - 1.96*std.error)) %>%
+  select(term, starts_with("OR")) %>%
+  filter(term == "victim_raceNon-white") %>%
+  knitr::kable(digits = 3)
+```
+
+From this regression model, the odds of a homicide of a non-white victim being resolved in Baltimore is 0.44 times the odds of a homicide of a white victim being resolved, holding all other variables constant. We are 95% confident that the true odds ratio is between 0.31 and 0.62.
+
+```{r}
+## Apply logistic regression function to each city, save results as a dataframe showing ORs and 95% CIs
+homicide_logistic = homicide %>%
+  group_by(city_state) %>%
+  nest() %>%  
+  mutate(regression = map(data, ~glm(resolved ~ victim_age + victim_race + victim_sex, data = ., family = binomial())),
+         regression = map(regression, broom::tidy)) %>% 
+  select(-data) %>%
+  unnest()%>% 
+  mutate(OR = exp(estimate),
+         OR_upper_bound = exp(estimate + 1.96*std.error),
+         OR_lower_bound = exp(estimate - 1.96*std.error)) %>%
+  select(city_state, term, starts_with("OR")) %>%
+  filter(term == "victim_raceNon-white") 
+```
+
+```{r}
+## Make a plot show ORs and CIs from each city
+homicide_logistic %>%
+  mutate(city_state = fct_reorder(city_state, OR)) %>%
+  ggplot(aes(x = city_state, y = OR)) +
+    geom_point() +
+    coord_flip() +
+    geom_errorbar(aes(ymin = OR_lower_bound, ymax = OR_upper_bound)) +
+    labs(x = "Location", y = "Odds Ratio", title = "Odds Ratios of Non-white Homicides being Resolved Compared to White Homicides") +
+    geom_hline(yintercept = 1, color = "red") +
+    theme_bw() 
+```
+
+From this plot, we can see that in most large US cities, the odds ratio of a non-white homicide being resolved compared to a white homicide being resolved is less than 1.0, indicating that less non-white homicides are solved (holding all other variables constant). However, there are several cities where the 95% CI includes 1.0, so further investigation into these cities is required in order to determine if the true OR is less than 1.0. 
 
 
-
-
+## Problem 2
+```{r}
+birthweight = read_csv("./birthweight.csv")
+```
 
 
 
