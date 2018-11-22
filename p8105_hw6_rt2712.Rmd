@@ -83,6 +83,7 @@ From this plot, we can see that in most large US cities, the odds ratio of a non
 
 ## Problem 2
 ```{r}
+## Load birthweight data and change variables to factors
 birthweight = read_csv("./birthweight.csv") %>%
   mutate(babysex = as.factor(babysex),
          frace = as.factor(frace),
@@ -91,12 +92,14 @@ birthweight = read_csv("./birthweight.csv") %>%
 ```
 
 ```{r}
+## Make my model
 bw_model_1 = lm(bwt ~ blength + ppbmi + smoken, data = birthweight)
 ```
 
 My model for predicting an infants birthweight includes 3 predictors. First, I chose the baby's length at birth. Although height is not a completely accurate predictor for a human height due to differing BMIs, I still think that a baby's length is pretty well correlated to birthweight. I also added the mother's pre-pregnancy BMI. Obviously the mother and child share DNA, so the mother's body type could be correlated to the child's body type. I chose BMI over other factors such as height and weight because BMI incorporates both of these variables. Lastly, I chose number of cigarettes smoked per day during pregnancy because if there's anything Mailman has taught me, it's that smoking is bad! I predict that birthweight is negatively correlated with number of cigarette's smoked. For my model, I decided that 3 predictors would be enough to ensure parsimony.
 
 ```{r}
+## Plot residuals vs fitted values for my model
 birthweight %>%
   add_predictions(., bw_model_1) %>%
   add_residuals(., bw_model_1) %>%
@@ -107,6 +110,42 @@ birthweight %>%
     theme_bw()
 ```
 
+Although there is a dense cluster of residuals randomly distributed about 0, there are also a number of outliers. Additionally, these outliers follow a linear trend, instead of a random distribution. My model seems pretty good at accounting for variability, but there is definitely some values that my model does not account for.
 
+```{r}
+## Use different predictors for birthweight
+bw_model_2 = lm(bwt ~ blength + gaweeks, data = birthweight)
 
+bw_model_3 = lm(bwt ~ bhead + blength + babysex + bhead * blength  + bhead * babysex + blength * babysex + bhead * blength * babysex, data = birthweight)
+```
 
+Here, I've fit two more models using different predictors for infant birthweight. The first one uses birth length and gestational age and the second one uses birth length, head circumfrence, and sex of the baby and all the interactions of these variables to predict birthweight. I am going to compare these models to my model using cross validation to compare root mean square errors.
+
+```{r}
+## Make a cross validation dataset with 100 training and test pairs, apply models to training data sets, calculate RMSEs
+cv_df =
+  crossv_mc(birthweight, 100) %>% 
+  mutate(train = map(train, as_tibble),
+         test = map(test, as_tibble)) %>%
+  mutate(bw_model_1 = map(train, ~ lm(bwt ~ blength + ppbmi + smoken, data = birthweight)),
+         bw_model_2 = map(train, ~ lm(bwt ~ blength + gaweeks, data = birthweight)),
+         bw_model_3 = map(train, ~ lm(bwt ~ bhead + blength + babysex + bhead * blength  + bhead * babysex + blength * babysex + bhead * blength * babysex, data = birthweight))) %>% 
+  mutate(rmse_1 = map2_dbl(bw_model_1, test, ~ rmse(model = .x, data = .y)),
+         rmse_2 = map2_dbl(bw_model_2, test, ~ rmse(model = .x, data = .y)),
+         rmse_3 = map2_dbl(bw_model_3, test, ~ rmse(model = .x, data = .y)))
+```
+
+```{r}
+## Make violin plots showing the distribution of RMSEs for each model 
+cv_df %>% 
+  select(starts_with("rmse")) %>% 
+  gather(key = model, value = rmse) %>% 
+  mutate(model = str_replace(model, "rmse_", ""),
+         model = fct_inorder(model)) %>% 
+  ggplot(aes(x = model, y = rmse)) + 
+    geom_violin() +
+    theme_bw() +
+    labs(x = "Model", y = "RMSE", title = "RMSE Distribution for Different Models")
+```
+
+From these distributions, it can be seen that model 3 appears to be the best predictor of birthweight.
