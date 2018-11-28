@@ -65,7 +65,7 @@ homicide_logistic = homicide %>%
   filter(term == "victim_raceNon-white") 
 ```
 
-```{r}
+```{r fig.height = 7}
 ## Make a plot show ORs and CIs from each city
 homicide_logistic %>%
   mutate(city_state = fct_reorder(city_state, OR)) %>%
@@ -73,7 +73,7 @@ homicide_logistic %>%
     geom_point() +
     coord_flip() +
     geom_errorbar(aes(ymin = OR_lower_bound, ymax = OR_upper_bound)) +
-    labs(x = "Location", y = "Odds Ratio", title = "Odds Ratios of Non-white Homicides being Resolved Compared to White Homicides") +
+    labs(x = "Location", y = "Odds Ratio", title = "Odds Ratios of Non-white Homicides being Resolved \n Compared to White Homicides") +
     geom_hline(yintercept = 1, color = "red") +
     theme_bw() 
 ```
@@ -89,7 +89,11 @@ birthweight = read_csv("./birthweight.csv") %>%
          frace = as.factor(frace),
          mrace = as.factor(mrace),
          malform = as.factor(malform)) 
+## Check for missing data
+skimr::skim(birthweight)
 ```
+
+After loading the data, I changed the categorical variables to factors. I checked for missing data using the `skimr::skim` function, and it appears as if there are no NA values.
 
 ```{r}
 ## Make my model
@@ -110,7 +114,7 @@ birthweight %>%
     theme_bw()
 ```
 
-Although there is a dense cluster of residuals randomly distributed about 0, there are also a number of outliers. Additionally, these outliers follow a linear trend, instead of a random distribution. My model seems pretty good at accounting for variability, but there is definitely some values that my model does not account for.
+Although there is a dense cluster of residuals randomly distributed about 0, there are also a number of outliers. Additionally, these outliers follow a linear trend, instead of a random distribution. My model seems pretty good at accounting for variability, but there are definitely some values that my model does not account for.
 
 ```{r}
 ## Use different predictors for birthweight
@@ -148,4 +152,4 @@ cv_df %>%
     labs(x = "Model", y = "RMSE", title = "RMSE Distribution for Different Models")
 ```
 
-From these distributions, it can be seen that model 3 appears to be the best predictor of birthweight.
+From these distributions, it can be seen that model 3 appears to be the best predictor of birthweigh because it has the lowest RMSE.
